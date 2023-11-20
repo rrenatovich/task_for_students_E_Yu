@@ -1,4 +1,9 @@
 import random 
+from operator import attrgetter
+from datetime import datetime
+from .customers_dataclasses import CustomerTravelEleven
+from .log_builder import fillOrderInfo, writeCSV
+customerList = []
 
 class InputFlow:
     def __init__(self, parameter):
@@ -6,63 +11,54 @@ class InputFlow:
     def get_time(self):
         return random.expovariate(self.parameter)
 
-class Service: 
-    def __init__(self, parameter):
-        self.parameter = parameter
-        self.numberOfCustomers : int = 0
-    def get_time(self): 
-        return random.expovariate(self.parameter * self.numberOfCustomers)
-
-    def addCustomer(self):
-        self.numberOfCustomers += 1 
+class Customer():
+    def __init__(self, startTime): 
+        self.startTime = startTime
     
-    def removeCustomer(self): 
-        self.numberOfCustomers -= 1 
-
-class Buffer: 
-    def __init__(self, maxSize):
-        self.maxSize =maxSize
-        self.numberOfCustomers : int = 0 
-    
-    def addCustomer(self):
-        self.numberOfCustomers += 1 
-    
-    def removeCustomer(self): 
-        self.numberOfCustomers -= 1 
+    def getEndTime(self, param):
+        self.endTime = random.expovariate(param)
 
 class Model: 
-    def __init__(self, lmbd, mu, bufferSize, blockSize):
+    def __init__(self, lmbd, mu, blockSize):
         self.inputFlow = InputFlow(lmbd)
-        self.service = Service(mu)
-        self.buffer = Buffer(bufferSize)
+        self.service_param = mu
         self.blockSize = blockSize
         
-        self.customersInSystem : int = 0
         self.doneCustomers : int = 0 
 
-    def oneItteration(self):
-        if self.service.numberOfCustomers == 0: 
-            time = self.inputFlow.get_time()
-            self.service.addCustomer()
+        self.customersList = []
+        self.time = 1641018049 # старт 01 01 2022
 
-            print(f'Time: {time}, arrived customer')
+    def oneItteration(self):
+        if len(self.customersList) == 0: 
+            time = self.inputFlow.get_time()
+            self.time += time
+            customer = Customer(self.time)
+            customer.getEndTime(self.service_param)
+            self.customersList.append(customer)
         else: 
             t1 = self.inputFlow.get_time()
-            t2 = self.service.get_time()
-            if t1 < t2: 
-                if self.service.numberOfCustomers + 1 <= self.blockSize:
-                    self.service.addCustomer()
-                    print(f'Time: {t1}, arrived customer')
+            next_event = min(self.customersList, key=attrgetter('endTime'))
+            if t1 < next_event.endTime: 
+                self.time += t1
+                if len(self.customersList) + 1 <= self.blockSize:
+                    customer = Customer(self.time)
+                    customer.getEndTime(self.service_param)
+                    self.customersList.append(customer)
                 else: 
-                    if self.buffer.numberOfCustomers +1 <= self.buffer.maxSize:
-                        self.buffer.addCustomer()
-                        print(f'Time: {t1}, arrived customer in buffer')
+                    pass 
             else: 
-                self.service.removeCustomer()
-                print(f'Time: {t2}, serviced customer')
-            
+                self.time += next_event.endTime
+                next_event.endTime = self.time
+                # print(f' {datetime.fromtimestamp(next_event.startTime)}, {datetime.fromtimestamp(next_event.endTime)}')
+                self.customersList.remove(next_event)
+                customerList.append(fillOrderInfo(datetime.fromtimestamp(next_event.startTime), datetime.fromtimestamp(next_event.endTime) )) 
+
+    
     def cycle(self): 
         counter = 0 
-        while counter != 20: 
+        while counter != 100000: 
             self.oneItteration()
             counter += 1
+        print('done')
+        writeCSV(customerList)
