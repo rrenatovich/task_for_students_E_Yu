@@ -11,18 +11,18 @@ class CustomerTravelEleven:
     totalBill: str
     consultation: bool
     websitePage: str 
-    consultationDuration: float #секунды
+    consultationDuration: float #минуты
 
 @dataclass 
 class CustomerMed: 
     id: int 
+    category: str
+    serviceCategory: str
     numberPerson: int 
-    direction: str
     sex: str 
-    date: str
-    totalBill: str
-    consultation: bool
-    websitePage: str 
-    consultationDuration: float #секунды
+    vote: int
+    StartDate: str
+    EndDate: str
+    
 
 
